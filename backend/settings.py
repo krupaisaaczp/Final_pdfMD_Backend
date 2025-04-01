@@ -1,4 +1,3 @@
-# settings.py
 import os
 from pathlib import Path
 import dj_database_url
@@ -6,15 +5,14 @@ import dj_database_url
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv("SECRET_KEY", "6ywa!$siklcznp&8ctr3q)8l_3ub(%=u^h^oht9d$@jr=1uc!q")
-DEBUG = os.getenv("DJANGO_DEBUG", "True") == "True"
+DEBUG = os.getenv("DJANGO_DEBUG", "False") == "True"  # Default to False in production
 
-# Update ALLOWED_HOSTS for Render and local dev
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
-    "*.onrender.com",
     "backendforpdfmalwaredetection.onrender.com",
-] + [host.strip() for host in os.getenv("ALLOWED_HOSTS", "").split(",") if host.strip()]
+    "*.onrender.com",
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -42,18 +40,16 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# Update CORS for Render frontend
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "https://pdfmalwaredetectionbatch1project.netlify.app",
-    "https://*.onrender.com",
+    "https://backendforpdfmalwaredetection.onrender.com",
 ]
 CORS_ALLOW_CREDENTIALS = True
 
 ROOT_URLCONF = "backend.urls"
 WSGI_APPLICATION = "backend.wsgi.application"
 
-# Database
 DATABASES = {
     'default': dj_database_url.config(
         default=os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'db.sqlite3'}"),
@@ -61,16 +57,14 @@ DATABASES = {
     )
 }
 
-# Static and Media
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"  # Ensure this directory is writable on Render
+MEDIA_ROOT = BASE_DIR / "media"
 
-# Rest Framework
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
@@ -88,7 +82,6 @@ REST_FRAMEWORK = {
 
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 
-# Logging
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -106,7 +99,6 @@ LOGGING = {
     },
 }
 
-# Security
 SECURE_SSL_REDIRECT = not DEBUG
 SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
@@ -114,7 +106,6 @@ SECURE_HSTS_PRELOAD = True
 CSRF_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_SECURE = not DEBUG
 
-# No changes to templates, auth validators, language, timezone, etc., unless needed
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
