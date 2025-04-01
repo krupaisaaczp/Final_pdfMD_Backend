@@ -5,7 +5,7 @@ from pathlib import Path
 from django.conf import settings
 from django.core.files.storage import default_storage
 from django.contrib.auth import authenticate
-from django.http import FileResponse
+from django.http import FileResponse, HttpResponse
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
@@ -138,22 +138,11 @@ class PDFFileViewSet(viewsets.ModelViewSet):
 @permission_classes([IsAuthenticated])
 def analyze_pdf(request):
     logger.debug(f"Analyze PDF - Headers: {dict(request.headers)}")
-    logger.debug(f"Analyze PDF - Authenticated: {request.user.is_authenticated}, User: {request.user}")
     logger.debug(f"Analyze PDF - Files: {request.FILES}")
-
-    if not request.user.is_authenticated:
-        auth_header = request.headers.get('Authorization', 'None')
-        logger.warning(f"Unauthorized attempt to analyze PDF. IP: {request.META.get('REMOTE_ADDR')}, Auth Header: {auth_header}")
-        return Response({"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
-
     if 'pdf_file' not in request.FILES:
         return Response({"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST)
 
-    pdf_files = request.FILES.getlist('pdf_file')
-    if len(pdf_files) != 1:
-        return Response({"error": "Exactly one PDF file must be uploaded"}, status=status.HTTP_400_BAD_REQUEST)
-
-    file = pdf_files[0]
+    file = request.FILES['pdf_file']
     if not file.name.lower().endswith('.pdf'):
         return Response({"error": "File must be a PDF"}, status=status.HTTP_400_BAD_REQUEST)
     if file.size > MAX_FILE_SIZE:
@@ -283,25 +272,6 @@ def analysis_history(request):
 @permission_classes([IsAuthenticated])
 def download_report(request, pdf_id):
     logger.debug(f"Report download requested for PDF {pdf_id} by {request.user.username}")
-    
-    # WARNING: Accepting a token via query parameter is less secure because it exposes the token in the URL,
-    # which can be logged in browser history, server logs, or intercepted in transit.
-    # The recommended approach is to use the Authorization header via an Axios request (e.g., pdfService.downloadReport).
-    if not request.user.is_authenticated:
-        token = request.GET.get('token')
-        if token:
-            try:
-                token_obj = Token.objects.get(key=token)
-                request.user = token_obj.user
-                logger.info(f"Authenticated user {request.user.username} via query parameter token for PDF {pdf_id}")
-            except Token.DoesNotExist:
-                logger.warning(f"Invalid token provided in query parameter for PDF {pdf_id}")
-                return Response({"error": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED)
-    
-    if not request.user.is_authenticated:
-        logger.warning(f"Authentication failed for PDF {pdf_id} download request")
-        return Response({"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
-
     try:
         pdf_file = PDFFile.objects.get(id=pdf_id, user=request.user)
         report_path = os.path.join(settings.MEDIA_ROOT, pdf_file.report_file.name)

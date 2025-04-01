@@ -1,4 +1,3 @@
-# urls.py (assuming this is in pmd_final_batch_1/urls.py or backend/urls.py)
 from django.urls import path, include
 from django.http import HttpResponse
 from rest_framework.routers import DefaultRouter
@@ -11,7 +10,7 @@ router = DefaultRouter()
 router.register(r'pdfs', PDFFileViewSet, basename='pdf')
 
 urlpatterns = [
-    path('', lambda request: HttpResponse('OK'), name='health'),  # Add root route
+    path('', lambda request: HttpResponse('OK'), name='health'),
     path('api/', include(router.urls)),
     path('api/auth/register/', register_user, name='register'),
     path('api/auth/login/', login_user, name='login'),

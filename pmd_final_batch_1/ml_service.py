@@ -1,4 +1,3 @@
-# ml_service.py
 import os
 import json
 import subprocess
@@ -16,6 +15,7 @@ MODEL_DIR = os.path.join(settings.BASE_DIR, "pmd_final_batch_1", "models")
 def extract_features(pdf_path):
     script_path = os.path.join(ML_SCRIPTS_DIR, "extract_pdf_features.py")
     try:
+        logger.info(f"Extracting features from {pdf_path}")
         result = subprocess.run(
             ["python", script_path, pdf_path],
             capture_output=True,
@@ -28,6 +28,7 @@ def extract_features(pdf_path):
         features = json.loads(output)
         if isinstance(features, dict) and "error" in features:
             raise Exception(features["error"])
+        logger.debug(f"Features extracted: {features}")
         return features
     except subprocess.CalledProcessError as e:
         logger.error(f"Feature extraction failed: {e.stderr}")
@@ -57,7 +58,7 @@ def preprocess_features(features):
         scaler_path = os.path.join(MODEL_DIR, "scaler.pkl")
         if not os.path.exists(scaler_path):
             logger.error(f"Scaler file not found at {scaler_path}")
-            raise FileNotFoundError(f"Scaler file not found at {scaler_path}. Please ensure ML models are deployed.")
+            raise FileNotFoundError(f"Scaler file not found at {scaler_path}")
         scaler = joblib.load(scaler_path)
         scaled_features = scaler.transform(df)
         logger.debug(f"Raw Features: {dict(zip(expected_features, df.iloc[0]))}")
@@ -72,13 +73,10 @@ def predict_malware(features):
         model_path = os.path.join(MODEL_DIR, "best_model.pkl")
         if not os.path.exists(model_path):
             logger.error(f"Model file not found at {model_path}")
-            raise FileNotFoundError(f"Model file not found at {model_path}. Please ensure ML models are deployed.")
+            raise FileNotFoundError(f"Model file not found at {model_path}")
         model = joblib.load(model_path)
         prediction = model.predict(features)[0]
-        try:
-            probability = model.predict_proba(features)[0][1]
-        except AttributeError:
-            probability = 0.5
+        probability = getattr(model, 'predict_proba', lambda x: [0.5, 0.5])(features)[0][1]
         result = "Malicious" if probability > 0.5 else "Benign"
         logger.info(f"Prediction: {result}, Confidence: {probability}")
         return {"prediction": result, "confidence": float(probability)}
@@ -86,7 +84,6 @@ def predict_malware(features):
         logger.error(f"Error in predict_malware: {str(e)}")
         raise Exception(f"Error making prediction: {str(e)}")
 
-# Rest of the file (generate_report, explain_prediction) remains unchanged unless errors occur there
 def generate_report(pdf_path, report_filename):
     try:
         from fpdf import FPDF
@@ -103,7 +100,7 @@ def generate_report(pdf_path, report_filename):
         pdf.ln(10)
         pdf.set_font("Arial", "", 12)
         pdf.cell(200, 10, f"File: {os.path.basename(pdf_path)}", ln=True)
-        pdf.cell(200, 10, f"File Size: {features.get('file_size_kb', 'N/A')} KB", ln=True)
+        pdf.cell(200, 10, f"File Size: {features.get('@file_size_kb', 'N/A')} KB", ln=True)
         pdf.cell(200, 10, f"File Hash (SHA-256): {features.get('file_hash', 'N/A')}", ln=True)
         pdf.cell(200, 10, f"PDF Version: {features.get('pdf_version', 'N/A')}", ln=True)
         pdf.cell(200, 10, f"Author: {features.get('author', 'Not specified')}", ln=True)

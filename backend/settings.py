@@ -5,7 +5,7 @@ import dj_database_url
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv("SECRET_KEY", "6ywa!$siklcznp&8ctr3q)8l_3ub(%=u^h^oht9d$@jr=1uc!q")
-DEBUG = os.getenv("DJANGO_DEBUG", "False") == "True"  # Default to False in production
+DEBUG = os.getenv("DJANGO_DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = [
     "127.0.0.1",
@@ -42,12 +42,14 @@ MIDDLEWARE = [
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
+    "https://67ebfb85a517074a95eadc8c--pdfmalwaredetectionbatch1project.netlify.app",
     "https://pdfmalwaredetectionbatch1project.netlify.app",
     "https://backendforpdfmalwaredetection.onrender.com",
 ]
 CORS_ALLOW_CREDENTIALS = True
 
 ROOT_URLCONF = "backend.urls"
+
 WSGI_APPLICATION = "backend.wsgi.application"
 
 DATABASES = {
