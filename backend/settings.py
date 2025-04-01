@@ -1,23 +1,21 @@
+# settings.py
 import os
 from pathlib import Path
 import dj_database_url
 
-# BASE DIRECTORY
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECRET KEY (Use environment variable for production)
 SECRET_KEY = os.getenv("SECRET_KEY", "6ywa!$siklcznp&8ctr3q)8l_3ub(%=u^h^oht9d$@jr=1uc!q")
-
-# DEBUG MODE (Set to False in production via environment variable)
 DEBUG = os.getenv("DJANGO_DEBUG", "True") == "True"
 
-# ALLOWED HOSTS (Dynamic for Render and local dev)
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
-    "*.onrender.com",  # Render's default domain pattern
-] + os.getenv("ALLOWED_HOSTS", "").split(",")  # Add custom hosts from env var
+    "*.onrender.com",
+    "backendforpdfmalwaredetection.onrender.com",
+] + os.getenv("ALLOWED_HOSTS", "").split(",")
 
+# Rest of your settings...
 # INSTALLED APPS
 INSTALLED_APPS = [
     'django.contrib.admin',
