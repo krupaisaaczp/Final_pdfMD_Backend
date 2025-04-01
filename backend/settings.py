@@ -6,13 +6,17 @@ import dj_database_url
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECRET KEY (Use environment variable for production)
-SECRET_KEY = os.getenv("SECRET_KEY", "your-default-secret-key")
+SECRET_KEY = os.getenv("SECRET_KEY", "6ywa!$siklcznp&8ctr3q)8l_3ub(%=u^h^oht9d$@jr=1uc!q")
 
-# DEBUG MODE (Set to False in production)
-DEBUG = os.getenv("DJANGO_DEBUG", "False") == "True"
+# DEBUG MODE (Set to False in production via environment variable)
+DEBUG = os.getenv("DJANGO_DEBUG", "True") == "True"
 
-# ALLOWED HOSTS
-ALLOWED_HOSTS = ['*.railway.app', 'pmd_final_batch_1.up.railway.app']
+# ALLOWED HOSTS (Dynamic for Render and local dev)
+ALLOWED_HOSTS = [
+    "127.0.0.1",
+    "localhost",
+    "*.onrender.com",  # Render's default domain pattern
+] + os.getenv("ALLOWED_HOSTS", "").split(",")  # Add custom hosts from env var
 
 # INSTALLED APPS
 INSTALLED_APPS = [
@@ -21,13 +25,13 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'whitenoise.runserver_nostatic',  # Added for static file serving
     'django.contrib.staticfiles',
     
     # Third-party apps
     'rest_framework',
     'rest_framework.authtoken',
     'corsheaders',  # CORS middleware for frontend-backend communication
-    'whitenoise.runserver_nostatic',  # For static files in production
     
     # Your app
     'pmd_final_batch_1',
@@ -36,9 +40,9 @@ INSTALLED_APPS = [
 # MIDDLEWARE
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # Serve static files efficiently
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Added for static file serving on Render
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',  # Enable CORS
+    'corsheaders.middleware.CorsMiddleware',  # Enable CORS (before CommonMiddleware)
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -48,11 +52,9 @@ MIDDLEWARE = [
 
 # CORS SETTINGS (For React frontend)
 CORS_ALLOWED_ORIGINS = [
-    "https://pdfmalwaredetectionbatch1project.netlify.app",
-]
-CORS_ALLOWED_ORIGIN_REGEXES = [
-    r"^https://.*\.netlify\.app$",
-    r"^http://localhost(:[0-9]+)?$",
+    "http://localhost:3000",  # React default port for local dev
+    "https://*.onrender.com",  # Render deployed backend
+    "https://your-frontend-domain.netlify.app",  # Replace with your actual frontend URL
 ]
 CORS_ALLOW_CREDENTIALS = True
 
@@ -81,7 +83,10 @@ WSGI_APPLICATION = "backend.wsgi.application"
 
 # DATABASE CONFIGURATION
 DATABASES = {
-    'default': dj_database_url.config(default=os.getenv('DATABASE_URL', f"sqlite:///{BASE_DIR / 'db.sqlite3'}"))
+    'default': dj_database_url.config(
+        default=os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'db.sqlite3'}"),
+        conn_max_age=600,  # Keep connections alive for 10 minutes
+    )
 }
 
 # AUTH PASSWORD VALIDATION
@@ -98,14 +103,15 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# STATIC & MEDIA FILES
+# STATIC FILES
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"  # For Render
 
+# MEDIA FILES
 MEDIA_URL = "/media/"
-MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+MEDIA_ROOT = BASE_DIR / "media"
 
 # DEFAULT PRIMARY KEY FIELD TYPE
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -124,10 +130,6 @@ REST_FRAMEWORK = {
         'rest_framework.parsers.FormParser',
         'rest_framework.parsers.MultiPartParser',
     ],
-    'DEFAULT_RENDERER_CLASSES': [
-        'rest_framework.renderers.JSONRenderer',
-    ],
-    'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
 }
 
 # FILE UPLOAD SETTINGS
@@ -145,8 +147,16 @@ LOGGING = {
     'loggers': {
         'pmd_final_batch_1': {
             'handlers': ['console'],
-            'level': 'DEBUG',
+            'level': 'DEBUG' if DEBUG else 'INFO',
             'propagate': True,
         },
     },
 }
+
+# SECURITY SETTINGS (Enabled in production, disabled locally)
+SECURE_SSL_REDIRECT = not DEBUG
+SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+CSRF_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_SECURE = not DEBUG
