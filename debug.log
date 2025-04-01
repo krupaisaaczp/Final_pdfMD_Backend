@@ -1,0 +1,2 @@
+INFO 2025-04-01 11:14:56,724 autoreload Watching for file changes with StatReloader
+INFO 2025-04-01 11:16:07,784 autoreload D:\PROJECT_AITS_BATCH_1\pdf_malware_detection\backend\settings.py changed, reloading.

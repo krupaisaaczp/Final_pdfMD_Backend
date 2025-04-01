@@ -1,0 +1,1 @@
+web: gunicorn pmd_final_batch_1.wsgi --log-file -
