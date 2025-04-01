@@ -8,39 +8,33 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("SECRET_KEY", "6ywa!$siklcznp&8ctr3q)8l_3ub(%=u^h^oht9d$@jr=1uc!q")
 DEBUG = os.getenv("DJANGO_DEBUG", "True") == "True"
 
+# Update ALLOWED_HOSTS for Render and local dev
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "localhost",
     "*.onrender.com",
     "backendforpdfmalwaredetection.onrender.com",
-] + os.getenv("ALLOWED_HOSTS", "").split(",")
+] + [host.strip() for host in os.getenv("ALLOWED_HOSTS", "").split(",") if host.strip()]
 
-# Rest of your settings...
-# INSTALLED APPS
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'whitenoise.runserver_nostatic',  # Added for static file serving
+    'whitenoise.runserver_nostatic',
     'django.contrib.staticfiles',
-    
-    # Third-party apps
     'rest_framework',
     'rest_framework.authtoken',
-    'corsheaders',  # CORS middleware for frontend-backend communication
-    
-    # Your app
+    'corsheaders',
     'pmd_final_batch_1',
 ]
 
-# MIDDLEWARE
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # Added for static file serving on Render
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',  # Enable CORS (before CommonMiddleware)
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -48,73 +42,35 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# CORS SETTINGS (For React frontend)
+# Update CORS for Render frontend
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # React default port for local dev
-    "https://*.onrender.com",  # Render deployed backend
-    "https://your-frontend-domain.netlify.app",  # Replace with your actual frontend URL
+    "http://localhost:3000",
+    "https://pdfmalwaredetectionbatch1project.netlify.app",
+    "https://*.onrender.com",
 ]
 CORS_ALLOW_CREDENTIALS = True
 
-# ROOT URL CONFIG
 ROOT_URLCONF = "backend.urls"
-
-# TEMPLATES
-TEMPLATES = [
-    {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / "templates"],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
-            ],
-        },
-    },
-]
-
-# WSGI APPLICATION
 WSGI_APPLICATION = "backend.wsgi.application"
 
-# DATABASE CONFIGURATION
+# Database
 DATABASES = {
     'default': dj_database_url.config(
         default=os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'db.sqlite3'}"),
-        conn_max_age=600,  # Keep connections alive for 10 minutes
+        conn_max_age=600,
     )
 }
 
-# AUTH PASSWORD VALIDATION
-AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
-]
-
-# LANGUAGE, TIMEZONE
-LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
-USE_I18N = True
-USE_TZ = True
-
-# STATIC FILES
+# Static and Media
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"  # For Render
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
-# MEDIA FILES
 MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_ROOT = BASE_DIR / "media"  # Ensure this directory is writable on Render
 
-# DEFAULT PRIMARY KEY FIELD TYPE
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# REST FRAMEWORK SETTINGS
+# Rest Framework
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
@@ -130,10 +86,9 @@ REST_FRAMEWORK = {
     ],
 }
 
-# FILE UPLOAD SETTINGS
-FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 
-# LOGGING (For debugging)
+# Logging
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -151,10 +106,32 @@ LOGGING = {
     },
 }
 
-# SECURITY SETTINGS (Enabled in production, disabled locally)
+# Security
 SECURE_SSL_REDIRECT = not DEBUG
 SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 CSRF_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_SECURE = not DEBUG
+
+# No changes to templates, auth validators, language, timezone, etc., unless needed
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [BASE_DIR / "templates"],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+LANGUAGE_CODE = 'en-us'
+TIME_ZONE = 'UTC'
+USE_I18N = True
+USE_TZ = True
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

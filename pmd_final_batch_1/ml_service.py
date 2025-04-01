@@ -1,3 +1,4 @@
+# ml_service.py
 import os
 import json
 import subprocess
@@ -5,13 +6,14 @@ import numpy as np
 import pandas as pd
 import joblib
 from django.conf import settings
+import logging
 
-# Define paths for ML scripts and model files
+logger = logging.getLogger(__name__)
+
 ML_SCRIPTS_DIR = os.path.join(settings.BASE_DIR, "pmd_final_batch_1", "ml_scripts")
 MODEL_DIR = os.path.join(settings.BASE_DIR, "pmd_final_batch_1", "models")
 
 def extract_features(pdf_path):
-    """Extract features from the PDF file"""
     script_path = os.path.join(ML_SCRIPTS_DIR, "extract_pdf_features.py")
     try:
         result = subprocess.run(
@@ -28,18 +30,21 @@ def extract_features(pdf_path):
             raise Exception(features["error"])
         return features
     except subprocess.CalledProcessError as e:
+        logger.error(f"Feature extraction failed: {e.stderr}")
         raise Exception(f"Feature extraction failed: {e.stderr}")
     except json.JSONDecodeError:
-        raise Exception(f"Invalid JSON output from feature extraction: {result.stdout if 'result' in locals() else 'No output'}")
+        logger.error(f"Invalid JSON output: {result.stdout if 'result' in locals() else 'No output'}")
+        raise Exception(f"Invalid JSON output from feature extraction")
     except Exception as e:
+        logger.error(f"Error extracting features: {str(e)}")
         raise Exception(f"Error extracting features: {str(e)}")
 
 def preprocess_pdf(pdf_path):
-    """Preprocess a PDF file and return scaled features."""
     try:
         features = extract_features(pdf_path)
         return preprocess_features(features)
     except Exception as e:
+        logger.error(f"Error preprocessing PDF: {str(e)}")
         raise Exception(f"Error preprocessing PDF: {str(e)}")
 
 def preprocess_features(features):
@@ -51,54 +56,51 @@ def preprocess_features(features):
         df = pd.DataFrame([{k: features.get(k, 0) for k in expected_features}])
         scaler_path = os.path.join(MODEL_DIR, "scaler.pkl")
         if not os.path.exists(scaler_path):
-            raise FileNotFoundError(f"Scaler file not found at {scaler_path}")
+            logger.error(f"Scaler file not found at {scaler_path}")
+            raise FileNotFoundError(f"Scaler file not found at {scaler_path}. Please ensure ML models are deployed.")
         scaler = joblib.load(scaler_path)
         scaled_features = scaler.transform(df)
-        print("Raw Features:", dict(zip(expected_features, df.iloc[0])))
-        print("Scaled Features:", dict(zip(expected_features, scaled_features[0])))
+        logger.debug(f"Raw Features: {dict(zip(expected_features, df.iloc[0]))}")
+        logger.debug(f"Scaled Features: {dict(zip(expected_features, scaled_features[0]))}")
         return scaled_features
     except Exception as e:
-        print(f"Error in preprocess_features: {str(e)}")
+        logger.error(f"Error in preprocess_features: {str(e)}")
         raise Exception(f"Error preprocessing features: {str(e)}")
 
 def predict_malware(features):
     try:
         model_path = os.path.join(MODEL_DIR, "best_model.pkl")
         if not os.path.exists(model_path):
-            raise FileNotFoundError(f"Model file not found at {model_path}")
+            logger.error(f"Model file not found at {model_path}")
+            raise FileNotFoundError(f"Model file not found at {model_path}. Please ensure ML models are deployed.")
         model = joblib.load(model_path)
         prediction = model.predict(features)[0]
         try:
-            probability = model.predict_proba(features)[0][1]  # Probability of "Malicious"
+            probability = model.predict_proba(features)[0][1]
         except AttributeError:
             probability = 0.5
         result = "Malicious" if probability > 0.5 else "Benign"
-        print(f"Prediction: {result}, Confidence: {probability}")
+        logger.info(f"Prediction: {result}, Confidence: {probability}")
         return {"prediction": result, "confidence": float(probability)}
     except Exception as e:
-        print(f"Error in predict_malware: {str(e)}")
+        logger.error(f"Error in predict_malware: {str(e)}")
         raise Exception(f"Error making prediction: {str(e)}")
 
+# Rest of the file (generate_report, explain_prediction) remains unchanged unless errors occur there
 def generate_report(pdf_path, report_filename):
-    """Generate a report for the PDF analysis"""
     try:
         from fpdf import FPDF
-        
         reports_dir = os.path.join(settings.MEDIA_ROOT, "reports")
         os.makedirs(reports_dir, exist_ok=True)
-        
         features = extract_features(pdf_path)
         processed_features = preprocess_features(features)
         prediction_result = predict_malware(processed_features)
-        
         report_path = os.path.join(reports_dir, report_filename)
         pdf = FPDF()
         pdf.add_page()
-        
         pdf.set_font("Arial", "B", 16)
         pdf.cell(200, 10, "PDF Malware Detection Report", ln=True, align="C")
         pdf.ln(10)
-        
         pdf.set_font("Arial", "", 12)
         pdf.cell(200, 10, f"File: {os.path.basename(pdf_path)}", ln=True)
         pdf.cell(200, 10, f"File Size: {features.get('file_size_kb', 'N/A')} KB", ln=True)
@@ -109,23 +111,19 @@ def generate_report(pdf_path, report_filename):
         pdf.cell(200, 10, f"Prediction: {prediction_result['prediction']}", ln=True)
         pdf.cell(200, 10, f"Confidence: {prediction_result['confidence']:.2f}", ln=True)
         pdf.ln(10)
-        
         pdf.set_font("Arial", "B", 14)
         pdf.cell(200, 10, "Features Detected:", ln=True)
         pdf.set_font("Arial", "", 12)
-        
         for key, value in features.items():
             if key in ["header_length", "file_size_kb", "num_pages", "is_encrypted", "has_javascript", "has_embedded_files", "has_openaction", "has_launch"]:
                 pdf.cell(200, 10, f"{key}: {value}", ln=True)
-        
         pdf.output(report_path)
         return report_path
     except Exception as e:
-        print(f"Error in generate_report: {str(e)}")
+        logger.error(f"Error in generate_report: {str(e)}")
         raise Exception(f"Error generating report: {str(e)}")
 
 def explain_prediction(pdf_path, features):
-    """Explain the prediction using feature importance"""
     try:
         model_path = os.path.join(MODEL_DIR, "best_model.pkl")
         model = joblib.load(model_path)
@@ -143,5 +141,5 @@ def explain_prediction(pdf_path, features):
         else:
             return "Model does not provide feature importance information."
     except Exception as e:
-        print(f"Error in explain_prediction: {str(e)}")
+        logger.error(f"Error in explain_prediction: {str(e)}")
         raise Exception(f"Error explaining prediction: {str(e)}")
